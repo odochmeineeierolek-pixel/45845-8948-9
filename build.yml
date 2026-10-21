@@ -1,0 +1,58 @@
+name: Build YAVIS-Setup
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Abhängigkeiten installieren
+        run: pip install -r requirements.txt
+
+      - name: Tests ausführen
+        run: python -m pytest tests -q
+
+      - name: EXE mit PyInstaller bauen
+        run: >
+          pyinstaller
+          --noconsole
+          --noconfirm
+          --name YAVIS
+          --collect-all faster_whisper
+          --collect-all ctranslate2
+          --collect-all pyttsx3
+          --collect-all sounddevice
+          --hidden-import pyttsx3.drivers
+          --hidden-import pyttsx3.drivers.sapi5
+          app.py
+
+      - name: Inno Setup installieren
+        run: choco install innosetup -y --no-progress
+
+      - name: Installer erstellen
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" setup.iss'
+
+      - name: Artifact hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: YAVIS-Setup
+          path: Output\YAVIS-Setup.exe
+          retention-days: 14
+
+      - name: Python aufräumen
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
